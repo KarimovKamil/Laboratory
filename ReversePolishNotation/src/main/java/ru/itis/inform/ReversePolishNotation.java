@@ -78,10 +78,18 @@ public class ReversePolishNotation {
 
 
     private int priority(Character token) {
-        if (token.equals('(')) return 1;
-        if (token.equals('+') || token.equals('-')) return 2;
-        if (token.equals('*') || token.equals('/')) return 3;
-        if (token.equals('^')) return 4;
+        switch (token) {
+            case '(' :
+                return 1;
+            case '+' :
+            case '-' :
+                return 2;
+            case '*' :
+            case '/' :
+                return 3;
+            case '^' :
+                return 4;
+        }
         return 0;
     }
 
