@@ -1,0 +1,11 @@
+FreeMarker template example: Hello World!!!
+
+===================================
+=== Country List ==================
+===================================
+
+
+    1. Russia
+    2. USA
+    3. Germany
+    4. Italy
