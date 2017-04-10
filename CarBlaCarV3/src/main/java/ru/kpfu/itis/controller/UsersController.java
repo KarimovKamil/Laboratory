@@ -1,20 +1,18 @@
 package ru.kpfu.itis.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.ModelMap;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import ru.kpfu.itis.forms.UserForm;
 import ru.kpfu.itis.model.*;
-import ru.kpfu.itis.service.AutosService;
-import ru.kpfu.itis.service.DriversService;
-import ru.kpfu.itis.service.PassengersService;
-import ru.kpfu.itis.service.UsersService;
+import ru.kpfu.itis.service.*;
 
-import java.text.SimpleDateFormat;
+import java.security.Principal;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
 import java.util.List;
 
 import org.apache.commons.codec.digest.DigestUtils;
@@ -39,58 +37,22 @@ public class UsersController {
     PassengersService passengersService;
 
     @Autowired
+    TripsService tripsService;
+
+    @Autowired
     private HttpServletRequest request;
 
     @RequestMapping(value = "/login", method = RequestMethod.GET)
-    public String loginPage() {
-        Long sessionUid = (Long) request.getSession().getAttribute("session_uid");
-        if (sessionUid != null) {
+    public String loginPage(Principal principal) {
+        if (principal != null) {
             return "redirect:/";
         }
         return "login";
     }
 
-    @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public String login(@ModelAttribute("user") UserForm userForm, BindingResult bindingResult, ModelMap modelMap) {
-
-        User user = usersService.findByNickname(userForm.getNickname());
-        //если пользователя нет в базе
-        if (user == null)
-            return "redirect:/login";
-
-        String hex = DigestUtils.md5Hex(userForm.getPassword());
-        if (hex.equals(user.getPassword())) {
-            request.getSession().setAttribute("session_uid", user.getId());
-            modelMap.addAttribute("userinfo", user);
-            //TODO: добавить в модель информацию
-            // о количестве поездок за последний месяц (endPasTrips)
-            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("MM.yyyy");
-            String currentMonth = simpleDateFormat.format(System.currentTimeMillis());
-            int numberOfLastTrips = 0;
-            List<Trip> trips;
-            if (user.getRole().equals(UserRole.DRIVER)) {
-                trips = user.getDriver().getTrips();
-            } else {
-                trips = user.getPassenger().getTrips();
-            }
-
-            for (Trip trip : trips) {
-                if (currentMonth.equals(simpleDateFormat.format(trip.getDate()))) {
-                    numberOfLastTrips++;
-                }
-            }
-            modelMap.addAttribute("numberOfLastTrips", numberOfLastTrips);
-            return "profile";
-        }
-
-        return "home";
-    }
-
-
     @RequestMapping(value = "/registration", method = RequestMethod.GET)
-    public String registrationGet(ModelMap modelMap) {
-        Long sessionUid = (Long) request.getSession().getAttribute("session_uid");
-        if (sessionUid != null) {
+    public String registrationGet(ModelMap modelMap, Principal principal) {
+        if (principal != null) {
             return "redirect:/";
         }
         modelMap.put("regForm", new UserForm());
@@ -100,9 +62,9 @@ public class UsersController {
     @RequestMapping(value = "/registration", method = RequestMethod.POST)
     public String registrationPost(@ModelAttribute("user") @Valid UserForm regForm,
                                    BindingResult bindingResult,
-                                   ModelMap modelMap) {
+                                   ModelMap modelMap){
 
-        if (bindingResult.hasErrors()) {
+        if(bindingResult.hasErrors()){
             modelMap.addAttribute("errors", bindingResult.getAllErrors());
             return "registration";
         }
@@ -128,15 +90,10 @@ public class UsersController {
     }
 
     @RequestMapping(value = "/users/{userId:\\d+}", method = RequestMethod.GET)
-    public String profile(ModelMap modelMap, @PathVariable Long userId
-    ) {
-        Long sessionUid = (Long) request.getSession().getAttribute("session_uid");
-        if (sessionUid == null) {
-            return "login";
-        }
-        User userInfo = usersService.findById(userId);
+    public String profile(ModelMap modelMap, @PathVariable Long userId, Principal principal) {
+        User userInfo = (User) ((Authentication) principal).getPrincipal();
         modelMap.put("userinfo", userInfo);
-        if (userInfo.getDriver() != null && userInfo.getDriver().getTrips().size() > 0) {
+        if (userInfo.getDriver() != null && !userInfo.getDriver().getTrips().isEmpty()) {
             List<Trip> tripList = userInfo.getDriver().getTrips();
             List<Trip> driverTrips = new ArrayList<>();
             List<Trip> endDriverTrips = new ArrayList<>();
@@ -166,6 +123,11 @@ public class UsersController {
         modelMap.put("pasTrips", pasTrips);
         modelMap.put("endPasTrips", endPasTrips);
 
+
+        List<Trip> tripsForMonth = tripsService.lastEndsTripsForMonth(userInfo);
+        modelMap.addAttribute("lastTrips", tripsForMonth);
+
+
         if (userInfo.getDriver() != null) {
             tripList = userInfo.getDriver().getTrips();
             List<Trip> driverTrips = new ArrayList<>();
@@ -194,18 +156,14 @@ public class UsersController {
     }
 
     @RequestMapping(value = "/newauto", method = RequestMethod.POST)
-    public String newAuto(@ModelAttribute Automobile automobile) {
-        Long userId = (Long) request.getSession().getAttribute("session_uid");
-        if (userId == null) {
-            return "login";
-        }
-        User user = usersService.findById(userId);
+    public String newAuto(@ModelAttribute Automobile automobile, Principal principal) {
+        User user = (User) ((Authentication) principal).getPrincipal();
         Driver driver = user.getDriver();
         if (driver == null) {
             driver = new Driver();
             driver.setUser(user);
             driver.setRating(0);
-            driver.setAutomobileList(new ArrayList<Automobile>());
+            driver.setAutomobileList(Collections.singletonList(automobile));
             driver.setExperience(0);
             driversService.addDriver(driver);
             user.setDriver(driver);
@@ -216,5 +174,6 @@ public class UsersController {
         autosService.addAuto(automobile);
         return "redirect:/users/" + user.getId();
     }
+
 }
 
