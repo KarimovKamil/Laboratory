@@ -8,10 +8,7 @@ import ru.kpfu.itis.model.User;
 import ru.kpfu.itis.utils.DateUtil;
 
 import javax.persistence.criteria.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 public class TripSpecs {
     public static Specification<Trip> checkParams(final User user, final Date date) {
@@ -28,7 +25,10 @@ public class TripSpecs {
                     predicates.add(cb.equal(root.<Driver>get("driver"), user.getDriver()));
                 }
                 if (user.getPassenger() != null) {
-                    predicates.add(cb.equal(root.<Passenger>get("passenger"), user.getPassenger()));
+                    query.distinct(true);
+                    Root<Passenger> passengerRoot = query.from(Passenger.class);
+                    Expression<Collection<Trip>> tripsOfPassenger = passengerRoot.get("trips");
+                    predicates.add(cb.and(cb.equal(passengerRoot.get("user").get("nickname"), user.getNickname()), cb.isMember(root, tripsOfPassenger)));
                 }
 
                 return cb.and(predicates.toArray(new Predicate[predicates.size()]));

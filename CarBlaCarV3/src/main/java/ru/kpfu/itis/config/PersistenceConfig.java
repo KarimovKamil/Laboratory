@@ -16,7 +16,7 @@ import javax.sql.DataSource;
 import java.beans.PropertyVetoException;
 
 @Configuration
-@ComponentScan(basePackages = {"ru.kpfu.itis.model"})
+@ComponentScan(basePackages = {"ru.kpfu.itis"})
 @EnableJpaRepositories(basePackages = {"ru.kpfu.itis.repository"})
 @EnableTransactionManagement
 public class PersistenceConfig {

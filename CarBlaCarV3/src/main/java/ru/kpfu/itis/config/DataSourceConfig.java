@@ -14,7 +14,7 @@ public class DataSourceConfig {
     public DataSource dataSource() throws SQLException {
         final SimpleDriverDataSource dataSource = new SimpleDriverDataSource();
         dataSource.setDriver(new org.postgresql.Driver());
-        dataSource.setUrl("jdbc:postgresql://localhost/carblacar");
+        dataSource.setUrl("jdbc:postgresql://localhost/laba");
         dataSource.setUsername("postgres");
         dataSource.setPassword("postgres");
 //        DatabasePopulatorUtils.execute(databasePopulator(), dataSource);
